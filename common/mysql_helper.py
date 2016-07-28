@@ -45,6 +45,7 @@ import uuid
 import functools
 import threading
 import logging
+import html
 
 
 # global engine object:
@@ -79,7 +80,8 @@ def create_engine(user, password, database, host='127.0.0.1', port=3306, **kw):
     import pymysql
     global engine
     if engine is not None:
-        raise DBError('Engine is already initialized.')
+        engine=None
+        # raise DBError('Engine is already initialized.')
     conn = pymysql.connect(host=host, user=user, passwd=password, db=database, charset='utf8')
     engine = _Engine(lambda: conn)
     # test connection...
@@ -148,6 +150,11 @@ def _select(sql, first=False, *args):
     global _db_ctx
     cursor = None
     sql = sql.replace('?', '%s')
+    args_list = list(args)
+    for i, v in enumerate(args_list):
+        if not isinstance(v, int):
+            args_list[i] = html.escape(v, quote=True)
+    args = tuple(args_list)
     logging.info('SQL: %s, ARGS: %s' % (sql, args))
     try:
         cursor = _db_ctx.connection.cursor()
@@ -172,6 +179,11 @@ def _update(sql, *args):
     global _db_ctx
     cursor = None
     sql = sql.replace('?', '%s')
+    args_list = list(args)
+    for i, v in enumerate(args_list):
+        if not isinstance(v, int):
+            args_list[i] = html.escape(v, quote=True)
+    args = tuple(args_list)
     logging.info('SQL: %s, ARGS: %s' % (sql, args))
     try:
         cursor = _db_ctx.connection.cursor()
@@ -192,20 +204,19 @@ def _insert(sql, *args):
     """
     执行insert 语句，返回insert的主键
     """
-    print(1)
     global _db_ctx
     cursor = None
     sql = sql.replace('?', '%s')
-    print(2)
+    args_list=list(args)
+    for i,v in enumerate(args_list):
+        if not isinstance(v, int):
+            args_list[i]=html.escape(v,quote=True)
+    args=tuple(args_list)
     logging.info('SQL: %s, ARGS: %s' % (sql, args))
     try:
-        print(3)
         cursor = _db_ctx.connection.cursor()
-        print(4)
         cursor.execute(sql, args)
-        print(5)
         r = cursor.lastrowid
-        print(6)
         if _db_ctx.transactions == 0:
             # no transaction enviroment:
             logging.info('auto commit')
@@ -213,7 +224,6 @@ def _insert(sql, *args):
         return r
     finally:
         if cursor:
-            print(7)
             cursor.close()
 
 
